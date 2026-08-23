@@ -1,83 +1,180 @@
-# DIO Spring Boot - Final Project 05: Spring AI (budgeting)
+# API Inteligente de Orçamento com Spring AI
 
-## Introduction
+Projeto desenvolvido como desafio final da trilha de Spring Boot, utilizando Spring AI para integrar inteligência artificial a uma API de controle financeiro.
 
-This final module applies Spring AI in a budgeting API while preserving the same layered architecture used across the track.
+## Objetivo
 
-The goal is to integrate AI capabilities without bypassing domain and use case boundaries.
+O projeto permite registrar e consultar transações financeiras e utilizar inteligência artificial para interpretar comandos enviados por áudio.
 
-## Code Context
+O fluxo principal da aplicação é:
 
-The project processes voice commands to create and query financial transactions.
+Áudio → Transcrição → Inteligência Artificial → Tool Calling → Operação financeira → Resposta em áudio
 
-Primary flow:
+## Tecnologias utilizadas
 
-1. Client uploads an audio file.
-2. Audio is transcribed into text.
-3. The model selects an application tool/use case.
-4. The use case persists or queries transaction data.
-5. The final response is converted to audio.
+- Java
+- Spring Boot
+- Spring AI
+- OpenAI
+- JPA / Hibernate
+- H2
+- Lombok
+- Gradle
+- Git
+- GitHub
 
-## Project Structure
+## Funcionalidades
 
-- `src/main/java/dio/budgeting/domain`
-  - Domain model and repository contract.
-- `src/main/java/dio/budgeting/application`
-  - Use cases used by both REST and AI tool calling.
-- `src/main/java/dio/budgeting/infrastructure`
-  - HTTP adapters, JPA adapters, and integration glue.
+A API permite:
 
-## Module-Specific Topics
+- Registrar transações financeiras;
+- Consultar transações por categoria;
+- Processar comandos enviados por áudio;
+- Transcrever áudio utilizando OpenAI Whisper;
+- Utilizar IA para interpretar comandos;
+- Executar funções da aplicação através de Tool Calling;
+- Gerar respostas em áudio.
 
-### Speech-to-text
+## Melhoria implementada
 
-- Uses `TranscriptionModel` for audio transcription.
-- Model settings are configured in `application.properties`.
+Como evolução do projeto apresentado durante o curso, foi adicionada uma nova ferramenta de Tool Calling chamada:
 
-### Tool calling
+`get-total-by-category`
 
-- `ChatClient` registers use-case tools.
-- `@Tool` methods expose business capabilities to the model.
+Essa ferramenta permite que a inteligência artificial consulte o valor total das transações de uma determinada categoria.
 
-### Text-to-speech
+Por exemplo, ao enviar um comando como:
 
-- `TextToSpeechModel` produces MP3 output from final text.
-- AI endpoint returns generated audio.
+> "Quanto eu gastei com mercado?"
 
-## Spring AI Documentation
+a IA identifica a categoria `GROCERIES` e utiliza a ferramenta `get-total-by-category` para calcular o total das transações dessa categoria.
 
-- Spring AI Reference: https://docs.spring.io/spring-ai/reference/index.html
-- ChatModel API: https://docs.spring.io/spring-ai/reference/api/chatmodel.html
-- ChatClient API: https://docs.spring.io/spring-ai/reference/api/chatclient.html
-- Tools API: https://docs.spring.io/spring-ai/reference/api/tools.html
-- Audio Transcriptions API: https://docs.spring.io/spring-ai/reference/api/audio/transcriptions.html
-- Audio Speech API: https://docs.spring.io/spring-ai/reference/api/audio/speech.html
+### Funcionamento
 
-## Shared Architecture References
-
-Common architecture concepts are documented in the root README:
-
-- [DDD layers](../README.md#ddd-layered-architecture)
-- [Class vs record](../README.md#java-class-vs-java-record-in-domain-modeling)
-- [Strong typed identifiers](../README.md#strong-typed-identifiers)
-- [Repository pattern](../README.md#repository-pattern)
-- [Use cases and Clean Architecture](../README.md#use-cases-and-clean-architecture)
-- [Docker Compose support](../README.md#docker-compose-support-in-development)
-
-## How to Run
-
-Set your OpenAI API key:
-
-```bash
-export OPENAI_API_KEY="your_api_key_here"
+```text
+Usuário
+   ↓
+Comando de voz
+   ↓
+Whisper
+   ↓
+Texto
+   ↓
+Spring AI
+   ↓
+Tool Calling
+   ↓
+GetTotalByCategoryUseCase
+   ↓
+TransactionRepository
+   ↓
+Banco de dados
+   ↓
+Total da categoria
+   ↓
+Resposta da IA
+   ↓
+Áudio
+Implementação
 ```
 
-Run the application and tests:
+Foi criado o:
 
-```bash
-./gradlew bootRun
-./gradlew test
+`GetTotalByCategoryUseCase.java`
+
+O Use Case utiliza o padrão de Tool Calling do Spring AI através da anotação:
 ```
+@Tool(
+    name = "get-total-by-category",
+    description = "Calcula o valor total das transações de uma categoria"
+)
+```
+A ferramenta consulta as transações da categoria informada e realiza a soma dos valores.
+
+Também foi atualizado o TransactionRepository para permitir a consulta das transações e o JpaTransactionRepository para implementar essa operação.
+
+Por fim, o TransactionController foi atualizado para disponibilizar a nova ferramenta ao ChatClient:
+```
+.defaultTools(
+    persistTransactionUseCase,
+    listTransactionsByCategoryUseCase,
+    getTotalByCategoryUseCase
+)
+```
+## Teste realizado
+
+Foram cadastradas transações de teste na categoria GROCERIES.
+
+Exemplo:
+```
+{
+  "description": "Compra no mercado",
+  "amount": 15000,
+  "category": "GROCERIES"
+}
+```
+Também foi adicionada outra transação:
+```
+{
+  "description": "Compra de alimentos",
+  "amount": 25000,
+  "category": "GROCERIES"
+}
+```
+Depois foi enviado um comando de voz solicitando o total gasto com mercado.
+
+A aplicação realizou corretamente o fluxo:
+```
+Áudio
+↓
+Transcrição
+↓
+Interpretação pela IA
+↓
+Tool Calling
+↓
+Consulta das transações
+↓
+Soma dos valores
+↓
+Resposta
+```
+## Como executar
+Clone ou faça o download do projeto.
+Abra a pasta 05-spring-ai em uma IDE compatível com Java.
+Configure a variável de ambiente:
+OPENAI_API_KEY
+Execute a classe:
+BudgetingApplication.java
+Utilize um cliente HTTP, como Postman ou Insomnia, para testar os endpoints.
+Criar transação
+POST /transactions
+Consultar transações por categoria
+GET /transactions/GROCERIES
+Enviar áudio para a IA
+POST /transactions/ai
+
+O endpoint deve receber um arquivo de áudio através do campo:
+
+file
+Aprendizados
+
+Durante o desenvolvimento foram praticados conceitos de:
+
+Spring Boot;
+Spring AI;
+ChatClient;
+Tool Calling;
+integração com modelos de IA;
+transcrição de áudio;
+geração de áudio;
+persistência de dados;
+arquitetura em camadas;
+criação de novos casos de uso;
+integração entre IA e regras reais da aplicação.
+Autor
+
+Jonathas Camargo Oliveira Barboza
 
 ## Notes
 
