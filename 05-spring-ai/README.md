@@ -172,7 +172,8 @@ persistência de dados;
 arquitetura em camadas;
 criação de novos casos de uso;
 integração entre IA e regras reais da aplicação.
-Autor
+
+## Autor
 
 Jonathas Camargo Oliveira Barboza
 
